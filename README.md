@@ -18,9 +18,9 @@ Trata-se de um programa que pretende fazer um motor (e um braço acoplado a ele)
 
 ### Ordens de funcionamento do motor
 
-digitalWrite(M1,0); digitalWrite(M2,1);  - Gira o motor no sentido de descida do braço
-digitalWrite(M1,1);  digitalWrite(M2,0); - Gira o motor no sentido de subida do braço
-digitalWrite(M1,1); digitalWrite(M2,1);  - Para o motor
+- digitalWrite(M1,0); digitalWrite(M2,1);  - Gira o motor no sentido de descida do braço
+- digitalWrite(M1,1);  digitalWrite(M2,0); - Gira o motor no sentido de subida do braço
+- digitalWrite(M1,1); digitalWrite(M2,1);  - Para o motor
 
 O braço mecânico comprime o Ambu, que é equipamento hospitalar que quando apertado expulsa seu volume de ar para o paciente através de uma traqueia de plástico e uma máscara presa sobre a boca e o nariz do paciente). Nesse conjunto, existem válvulas que fazem, dentre outra coisas, o trabalho de encaminhar o ar "usado" pelo paciente para fora do sistema.
 
