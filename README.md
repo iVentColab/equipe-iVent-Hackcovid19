@@ -1,7 +1,13 @@
 # I-Vent
 
-Repositório do código Arduíno do respirador de baixo custo iVent
+Ventilador pulmonar de baixo custo
 
-Baixe a IDE do arduino para melhor visualização: https://www.arduino.cc/en/Main/Software
+## Especificações técnicas:
 
-Em breve mais detalhes.
+- Arduino Mega
+- Motor 12 volts
+- Cooler
+- Fonte 12v 5 amp
+- 3 potenciômetros
+- Led display 7 segmentos
+- Ambu
