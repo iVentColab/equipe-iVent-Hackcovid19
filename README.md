@@ -36,7 +36,7 @@ Potenciômetros possuem 3 pinos, nos quais são ligados 3 fios. O pino da esquer
 
 ### Parâmetros
 
-1º - quantidade ou volume de ar injetada no paciente
-2º - velocidade dessa injeção - divida em duas partes com velocidades distintas
-3º - a relação entre tempo de inspiração e expiração - que foi resolvida de forma simples no 3º potenciômetro que dita um tempo de espera até completar o ciclo de acordo com a proporção desejada, escolhida pelo fisioterapeuta.
-4º - o quarto potenciômetro dita a taxa de desaceleração do braço mecânico, assim deixamos de necessitar de um algoritmo fixo e esse comportamento fica a cargo da equipe médica que saberá ajustar de modo eficiente no sentido de dar ao paciente uma inspiração mais confortável.
+1. Quantidade ou volume de ar injetada no paciente
+2. Velocidade dessa injeção - divida em duas partes com velocidades distintas
+3. A relação entre tempo de inspiração e expiração - que foi resolvida de forma simples no 3º potenciômetro que dita um tempo de espera até completar o ciclo de acordo com a proporção desejada, escolhida pelo fisioterapeuta.
+4. O quarto potenciômetro dita a taxa de desaceleração do braço mecânico, assim deixamos de necessitar de um algoritmo fixo e esse comportamento fica a cargo da equipe médica que saberá ajustar de modo eficiente no sentido de dar ao paciente uma inspiração mais confortável.
