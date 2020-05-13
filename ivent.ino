@@ -1,3 +1,5 @@
+
+
 //******************************************************************************************************************************
 // início do projeto                               - manha 27042020
 // finalização do código                           - noite 29042020  
@@ -24,7 +26,19 @@
 //Hardware                                         - manhã 08052020  Preparação e pigmentação do material plástico líquido
 //                                                                   que deve fazer a cobertura plástica das peças externas de metal.  
 //hardware                                         - manhã 09052020  Finalizada cobertura das duas peças do braço com pl[astico líquido
-//                                                            
+//   
+// migração p arduino mega- ja estavamos quase sem portas
+// implementando sensor optico reflexivo p sensoriamento do Ambu - esperando a peça chegar
+// implementação de encoder óptico p controle de posição do braço  
+// modelamos em 3d e imprimimos a peça ( rodela perfurada c adaptação p eixo do motor) do encoder com 72 passos 
+// implementamos o código p cooler reversível como auxiliar na eliminação ou diminuição de gases tóxicos residuais no sistema 
+// e que ainda serve como auxiliar p manutenção do peep no paciente
+// eliminamos o potenciometro q cuidava da velocidade da segunda metade do percurso (mais lenta) e implementamos no lugar uma função (map) da velocidade da faseA
+// sustituimos o display de 7 segmentos por um display lcd 16x2 (16 colunas e duas linhas)
+// Elaboramos um design onde as informações aparecem completas no display e imediatamente ajustáveis conforme forem editadas
+// foi implementado um código que mantém uma proporção exata do tempo da relação insp/exp programada pela equipe médica- grande avanço
+// foi implementado um código que calcula, baseado nos valores de curso, velocidade e i/e a frequencia ou tempo do ciclo comleto e expõe no displaylcd (unid em segs)
+// houve o entendimento da necessidade de implementação de um PID em dois lugares e isso já está sinalizado e estamos trabalhando nisso agora.                                                  
 //******************************************************************************************************************************
 
 // informações importantes p facilitar o entendimento:
@@ -45,7 +59,7 @@
 // No caso de não haver uma linha de oxigênio perto do paciente, ainda assim o aparelho tem utilidade pois ventila o pulmão do doente, não com tanta eficácia.
 
 // outra coisa imortante
-// temos agora 5 POTENCIÔMETROS, sendo 4 deles acessáveis, que são responsáveis pelo " ajuste ou programação" do comportamento do equipamento que é FEITA PELA EQUIPE MÉDICA
+// temos agora 3 POTENCIÔMETROS,   que são responsáveis pelo " ajuste ou programação" do comportamento do equipamento que é FEITA PELA EQUIPE MÉDICA
 // no hospital ou CTI
 // o equipamento tem que dar conta de pacientes extremamente diferentes ou seja permitir ao médico ou fisioterapeuta encontrar nesses 4 parametros (potenciômetros) 
 // a combinação ideal p cada paciente.
@@ -58,218 +72,169 @@
 // e ao mesmo tempo pode haver uma outra conversão para parametros como velocidade do motor, tamanho de percurso, ou qualquer outro.
 //  Parâmetros:
 // 1º - quantidade ou volume de ar injetada no paciente
-// 2º - velocidade dessa injeção - e aí entra também o algoritmo que falaremos adiante
-// 3º - a relação entre tempo de inspiração e expiração - que foi resolvida de forma simples no 3º potenciometro que simplesmente dita um tempo de espera 
-// até completar o ciclo de acordo com a proporção desejada escolhida pelo fisioterapeuta.
-// 4º - o quarto potenciometro dita a taxa de desaceleração do braço mecânico, assim deixamos de necessitar de um algoritmo fixo e esse comportamento fica a cargo
-// da equipe médica que saberá ajustar de modo eficiente no sentido de dar ao paciente uma inspiração mais confortável.
+// 2º - velocidade da fase A do giro do motor , a velocidade da fase b do percurso é ditada por uma outra função (map) da velocidade da fase A
+// 3º - a relação entre tempo de inspiração e expiração - resolvemos essa questão medidno o tempo gasto na inspiração completa e multiplicando pelo indice escolhido pela eq médica
 
 // próximos desafios devem aparecer quando o aparelho entrar em teste e quando a ANVISA fizer novas exigências
-//  idéias boas são sempre bem vindas! Abraço!!  
+//  idéias boas são sempre bem vindas! Abraço!! 
+ 
+//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#include <AutoPID.h>                         //PID sinistrão
+#include <Wire.h>
+#include <LCD.h>
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // Addr, En, Rw, Rs, d4, d5, d6, d7, backlighpin, polarity
 
+//Pinos digitais---------------------------
+const int
+    encoder=2,        // pino de interrupção do encoder
+    Ambu=3,           // in   - sensor óptico reflexivo (infravermelho) - informa ao sistema se há um ambu no aparelho ou se está fora de posição                              
+    buzzer= 4,        // aviso sonoro
+    M1 =5,            // out  - motor1  - pino 5 e 6 que levam informação de controle do arduino para a placa  controla o motor (módulo driver ponte H -L298N )
+    M2 =6,            // out  - motor1   
+    EnableM=7,        // out  - pino enable do motor. um PWM será aplicada nesse pino nos dando a possibilidade de controlar dessa forma a velocidade do motor  
+    C1=8,             // out  - cooler reversível. auxiliar na eliminação dos gaes tóxicos  info vai p (módulo driver ponte H -L298N )
+    C2=9,             // out  - cooler reversível. auxiliar na eliminação dos gaes tóxicos
+    EnableC=10,       // pino enable do cooler reversivel
+    // portas 20 e 21  SDA e SCL da placa I2C
+          
+// pinos analógicos
+    potV = A0,        // potenciometro responsável pela definição da velocidade do movimento do braço  - Knob AZUL
+    potF = A3,        //    "              "        "      "      da relação chamada - insp/exp ou I/E - Knob VERDE
+    potC = A1;        //    "              "        "      "      do curso do braço (VOLUME de ar injetada no paciente)  - Knob AMARELO                     
+     // sensor de fluxo   - não implementado
+     // sensor de pressão - não implementado
 
-//Pinagem---------------------------
-const int M1 =13;                // out  - motor1  - pino 12 e 13 que levam informação de controle do arduino para a placa  controla o motor (módulo driver ponte H -L298N )
-const int M2 =12;                // out  - motor1   
-const int EnableM=11;      // out  - pino enable do motor. um PWM será aplicada nesse pino nos dando a possibilidade de controlar dessa forma a velocidade do motor  
-const int Ambu=9;                 // in   - sensor microsuitch - informa ao sistema se há um ambu no aparelho ou se está fora de posição 
-byte display7s[7]={2,3,4,5,6,7,8};            //pins de 2 a 8   display de 7 segmentos
-                              
-
-                                      
-const int potV = A1;        // potenciometro responsável pela definição da velocidade do movimento do braço  - Knob VERDE 
-const int potF = A2;        //    "              "        "      "      do ciclo ou frequencia da respiração = tempo de espera pós subida - - Knob AZUL
-const int potC = A3;        // potenciometro responsável pela definição do curso do braço (quantidade de ar injetada no paciente)  - Knob AMARELO
-                            // pode ser entendido também como o CURSO ou tamanho do percurso do braço mecânico
-const int potA = A0;        // pot responsável por enviar um valor de velocidade para a FASE B do movimento do motor (substituto do ALGORITMO- por isso o A
-                            // é o potenciometro abaixo do pot de velocidade -knob Azul tb
-const int potE = A4;        // pot acoplado ao eixo do motor- funciona como um encoder- conforme o motor gira o arduino recebe 
-                            // a informação desse pot que nos dá a posição do motor e consequentemente da posição do braço mecânico.
-
-//variáveis---------------------------
-int leituraAmbu;            // variável q sinaliza se há um Ambu no equipamento.
-int leituraC;               // variável - valor analógico lido no potenciometroC  
-int leituraV;               //    "          "    "         "     potenciometroE  
-int leituraF;               //    "          "    "         "     potenciometroF  
-int leituraA;               //    "          "    "         "     potenciometroA
-int leituraE;               //    "          "    "         "     potenciometroM
-int valorC;                 // variável - valor parametrizado da leituraC -(de 1 a 9 - é o que vai ser visível no display de leds)
-int valorV;                 // variável - valor parametrizado da leituraE                   "
-int valorF;                 // variável - valor parametrizado da leituraF                   "
-int valorA;                 // variável - valor parametrizado da leituraA                   "
-int valorE;                 // variável - valor parametrizado da leituraM                   "
-int VpotC ;
-float VpotV ;
-int VpotF ;
-int VpotA ;
-int VpotE ;
-int marca=0;                // variável - indica se o programa acabou de iniciar ou não
-int valorguardadoC=0;       // variavel que guarda o último valor escolhido anteriormente para o curso do braço   - C
-int valorguardadoV=0;       //      "    "     "        "     "      "          "           "    velocidade de descida do braço mecanico - V
-int valorguardadoF=0;       //      "    "     "        "     "      "          "           "    para o tamanho do período ou frequencia - F
-int valorguardadoA=0;       //      "    "     "        "     "      "          "           "    velocidade da  FASE B  
-int valorguardadoE=0;       //      "    "     "   o valor da posição do braço mecanico  - E de Encoder
-byte valor;                 // variavel que guarda valor que é lançado no display de leds
-int xx;                     // variavel que guarda o resultado de calculos de tempo 
-int limiteUp= 100;          // valor provisorio do petenciometro uando esta no topo ---deveria ser mais proximo de 0 mas o pot ta ruim, rs
-int velocidadeFaseA;
-float variante=0;
-unsigned long ultimoTime;
-unsigned long timeAgora;    
-                            // a b c d e f g  
-byte seven_seg_digits[14][7]={{0,0,0,0,0,0,0},
-                             {0,0,0,1,1,0,0}, //Digito 1
-                             {1,0,1,1,0,1,1}, //Digito 2
-                             {1,0,1,1,1,1,0}, //Digito 3
-                             {1,1,0,1,1,0,0}, //Digito 4
-                             {1,1,2,0,1,1,0}, //Digito 5
-                             {1,1,0,0,1,1,1}, //Digito 6
-                             {0,0,1,1,1,0,0}, //Digito 7
-                             {1,1,1,1,1,1,1}, //Digito 8
-                             {1,1,1,1,1,0,0}, //Digito 9
-                             {1,1,1,1,1,0,1}, //Letra A de Ambu  - aparece piscando se o Ambu não está no lugar certo
-                             {0,1,0,0,0,0,1}, //aviso de subida  - acende enquanto checa a posição inicial e se encaminha p o ponto zero
-                             {0,0,0,0,0,0,0}, //zerado  - limpa o display
-                             {1,1,1,0,0,1,1}};//Letra E de Erro
-
-                             
-void setup(){        
-Serial.begin(9600);
+//variáveis--------------------------- 
+int leituraAmbu,                                  // variável q sinaliza se há um Ambu no equipamento.
+    leituraC,leituraV,leituraF,                   // valores analógico lido nos potenciometros              
+    valorC,valorV,valorF,                         // valor parametrizado da leitura feita nos potenciomentros                  
+    valorV2,                                      // é uma variante do valor V
+    guardadoC = 0, guardadoV = 0, guardadoF = 0,  // variáveis  guardam o valor anterior de C,V eF                          
+    marca=0,                                      // variável - indica se o programa acabou de iniciar ou não
+    limiteUp = 10,                                // ponto zero do equipamento
+    contador=0,                                   // conta as interrupções do encoder
+    frequencia=1,
+    espera;                                       //variavel que guarda o resultado de calculos de tempo               
+      
+unsigned long 
+    t1 = 0, t2 = 0, t3 = 0, t4 = 0;//  variáveis associada ao millis() 
+                                    
+void setup(){
+  Serial.begin(9600);
+  attachInterrupt(0, interrompendo, RISING);      // CONFIGURAÃO DA INTERRUPÇÃO NO PINO 2
+  pinMode(Ambu,INPUT);                            // PINO QUE MONITORA A PRESENÇA DO AMBU NO EQUIP
+  lcd.begin (16,2);                               //SETA A QUANTIDADE DE COLUNAS(16) E O NÚMERO DE LINHAS(2) DO DISPLAY
+  lcd.backlight();                                //LIGA O BACKLIGHT (LUZ DE FUNDO)                                 
 
  //pinos do motor
   pinMode(M1, OUTPUT); pinMode(M2, OUTPUT);  
-  pinMode(EnableM, OUTPUT);    // o pino enable habilita o funcionamento do motor. e é por isso que ele é ligado num pino do arduino que 
-                                      //pode ser usado como PWM - ligando e desligando o motor p controlar a sua velocidade
- 
+  pinMode(EnableM, OUTPUT);                       // o pino enable habilita o funcionamento do motor. Pino pwm usado p controlar a velocidade do motor                                
+
  // pinos dos 5 potenciometros
-  pinMode(potC, INPUT);pinMode(potF, INPUT);pinMode(potV, INPUT);pinMode(potA, INPUT);pinMode(potE, INPUT);    
-  
-  // pinos do display de 7 segmentos
- for (int nP=0;nP<=6;nP++){pinMode(display7s[nP],OUTPUT); }                        
-  }
+  pinMode(potC, INPUT);pinMode(potF, INPUT);pinMode(potV, INPUT);  
+
+  lcd.setBacklight(HIGH);                                     //iniciando com o display
+  lcd.setCursor(5,0);  lcd.print("iVent");
+  delay(2000);                                                // tempo p visualização do logo do iVent , rs
+  lcd.clear();                }
+
+void interrompendo(){  contador ++;  }                        // função de interrupção
+
 void loop(){  
+    if (marca==0) {                                           // se certifica que esse procedimento só acontece uma vez quando o equipamento é ligado                                                               
+       marca=1;
+       checando();                                            // chama a rotina que faz a checagem se o braço está na posição inicial(ponto zero)
+       atualizaDisplay();                                     
+       delay(1000);}                                          // delayzinho de espera p começar
+                     
+       leituraAmbu= digitalRead(Ambu);                        // verifica todo o tempo se o Ambu está no lugar certo
+       if (leituraAmbu==LOW){CadeAmbu();}                     // se o Ambu não está, chama a rotina CadeAmbu()- ta invertido enquanto naõ resolvemos o HARDWARE
+       atualizaDisplay();
   
-  if (marca==0) {                                        // se certifica que esse procedimento só acontece uma vez quando o equipamento é ligado                                                               
-  checando();  marca=1;  atualiza();                     // chama a rotina que faz a checagem se o braço está na posição inicial(ponto zero)
-  delay(1000);   }                                       // delayzinho de espera p começar
-                    
-  leituraAmbu= digitalRead(Ambu);                        // verifica todo o tempo se o Ambu está no lugar certo
-  if (leituraAmbu==LOW){CadeAmbu();}                     //INVERTEMOS ENQUANTO NÃO ESTÁ RESOLVIDO O HARDWARE- deverá ser novamente invertido quando isso for sanado
-                                                         // se o Ambu não está, chama a rotina CadeAmbu()
-                                                       
- VpotC = valorguardadoC*100;                             // esse multiplicador está sendo ajustado empiricamente p encontrar o mínimo e o máximo mais razoável     
- VpotV = velocidadeFaseA ;                               // velocidade p FASE A do percurso
- VpotF = valorguardadoF*350 ;                            // esse multiplicador está sendo ajustado p encontrar os tempos de espera mais razoável       
- //VpotA                                                 // essa informaçaõ dá ao fisioterapeuta a possibilidade de alterar de acordo com a sua observação a desaceleração do braço mecanico
- VpotE = valorguardadoE;                                 //essa informação substitui a versão anterior dos microsuitches - 
-                                                         // E de encoder  - através desse valor saberemos aonde o braço se encontra e até aonde queremos que ele vá
-
-//.........................................INSPIRAÇÃO DO PACIENTE        
+//.........................................INSPIRAÇÃO DO PACIENTE - em 2 fases A e B        
  //faseA  
-                                                          
-     while ( leituraE< VpotC/2)                                                         // enquanto o braço não atingir metade do curso escolhido
-       {  analogWrite(EnableM, VpotV);                                           // velocidade escolhida para FASE A, de acordo com o potV    
-          digitalWrite(M1,0);  digitalWrite(M2,1);                                    // motor gira                 
-          leituraE = analogRead(potE);                                                  // a cada loop faz nova leitura no Encoder
-          atualiza();                                                                   // da uma passadinha p atualizar o display de leds
-      }
+          t1 = millis();                                                                 //iniciando contagem de descida                                                           
+          contador=0;                                                                    // reinicia cotagem
+  while ( contador< valorC/2)                                                            // enquanto o braço não atingir metade do curso escolhido
+        { analogWrite(EnableM, valorV);                                                  // habilita motor com pwm no valor de velocidade escolhido no potV    
+          digitalWrite(M1,0);  digitalWrite(M2,1);                                       // motor gira no sentido 1                
+          atualizaDisplay();                                                             // da uma passadinha p atualizar o display 
+          digitalWrite(C1,0);  digitalWrite(C2,1);analogWrite(EnableM, 255);     }        // cooler sopra c a máxima potencia p evitar perda de fluxo                                                                             
                                                             
- //fase B       
- //  velocidade da FASE A desacelerando de acordo com o valor pot A
-                                                                                                                          
-  while ( leituraE<VpotC)                                                             // enquanto o braço não atingir o fim do percurso prescrito no pot C            
-        { analogWrite(EnableM, (VpotV)-variante);                              // velocidade inicial = velocidade da FASE A e desacelerando conforme taxa escolhida em potA         
-          digitalWrite(M1,0);  digitalWrite(M2,1);                                  // motor gira                 
-          if (VpotV-(variante+VpotA)>60){variante=variante+VpotA;}                    // variante vai crescendo a cada loop de acordo com taxa prescrita pelo potenciometra                                                       
-          atualiza();                                                                 // da uma passadinha p atualizar o display de leds 
-         }
-        variante=0; 
-        digitalWrite(M1,1);  digitalWrite(M2,1);                                     // acabado o loop paramos o motor
-                                                            
-//freadinha
-        digitalWrite(M1,1);  digitalWrite(M2,0); delay(80);                           // dá uma micro girada em sentido contrário p evitar que o motor gire mais                   
-        digitalWrite(M1,1);  digitalWrite(M2,1); delay(40);                           // do que devia.  Chegamos aos valores empiricamente.  Ainda estamos calibrando
-                                                                                        // essa foi a maneira encontrada p conseguir uma certa precisão no giro do motor
-          
-//........................ MOTOR RETORNANDO A POSIÇÃO SUPERIOR - PONTO ZERO
-     
-             
-     leituraE = analogRead(potE);                                                       // leitura da posição do braço no Encoder
-     while ( leituraE> limiteUp)                                                        // enquanto a leitura da posição do braço indicar  não chegou ao ponto zero                                                                                   
-       {   analogWrite(EnableM, VpotV);                                          // habilita o PWM com velocidade do potenciometro V
-           digitalWrite(M1,1);  digitalWrite(M2,0);                                   // giro invertido
-           leituraE = analogRead(potE);                                                 // a cada loop faz nova leitura no Encoder
-           atualiza();                                                                  // da uma passadinha p atualizar o display
-        }
-           digitalWrite(M1,1); digitalWrite(M2,1);                                    // desliga motor
-//freadinha
-           digitalWrite(M1,0); digitalWrite(M2,1);  delay(100); 
-           digitalWrite(M1,1); digitalWrite(M2,1);          
-           
-// tempo de espera 
-          int espera =  VpotF;                                     // potF controla o tempo de espera final depois de descer. 
-          xx=espera/20;                                            // Sua utilidade é construir os formatos padrões 1/1 ou 1/1,5 1/2 etc. na relação insp/exp    
-          for (int i = 0; i <=20; i++) {delay(xx); atualiza();}}   // lembrando que espera é o valor do potenciometro F responsavel pela frequencia  ou tamanho do ciclo total
-                                                                   // da mesma forma que a relação insp/exp
-                                                                   // poderiamos ter colocado um delay com o tempo xx, mas preferimos dividi-lo arbitrariamente em 20 pedaços
-                                                                   // para que a cada pedaço o procedimento desse um pulinho na rotina atualiza() que é quem atualiza alguma mudança
-                                                                   // nos potenciometros. Se não fosse feito isso, durante esse espaço de tempo as alteraçoes do usuário não seriam visualiadas
-                                                                   
- 
-void display7(int valor){                                          // rotina responsavel pela atualização do display de leds
- byte pino = 2;
-  for (byte contadorSegmentos = 0; contadorSegmentos <=6; ++contadorSegmentos){    
-    digitalWrite(pino, seven_seg_digits[valor][contadorSegmentos]);  
-    ++pino;                                                                      
-  }}
-                    
-void alertaInicio(){                                               // pisca "E" no display
-  valor=13;  display7(valor);delay(300);
-  valor=12;  display7(valor);delay(300);
-                  }
-           
-void CadeAmbu(){
-    
-     while (leituraAmbu==HIGH)                                     // verifica todo o tempo se há Ambu no lugar certo, e se não estiver pisca um "A"
-     {      valor=11;
-            display7(valor);  
-            leituraAmbu= digitalRead(Ambu);
-     }                                                        
- } 
- 
-void checando(){                                                           // ROTINA DE INICIO DE TRABALHAO
-
-     leituraE = analogRead(potE);                                          // leitura da posição do braço no Encoder
-     while ( leituraE>limiteUp)                                            // enquanto o braço não retornar pra próximo de zero
-       {   delay(100);
-           analogWrite(EnableM,70);                                 // habilita o PWM com velocidade lenta a ser verificada empiricamente
-           digitalWrite(M1,1);  digitalWrite(M2,0);                      // SUBINDO                       
-           leituraE = analogRead(potE);                                    // a cada loop faz nova leitura no Encoder
-           valor =11; display7(valor);
-        } 
-        //freadinha
-           digitalWrite(M1,0); digitalWrite(M2,1);  delay(100); 
-           digitalWrite(M1,1); digitalWrite(M2,1); 
-           delay(1000);                                                    // espera um tempinho p iniciar o trabalho
- }
-           
- void atualiza(){                                                          // rotina resp. pela atualização da leitura dos 5 potenciometros e envio p a rotina display7 
-                                                                           // só não vai enviar o potE porque não interessa                                     
-
-           leituraC = analogRead(potC); valorC = map(leituraC, 0, 1023, 1, 9);       
-           leituraV = analogRead(potV); valorV = map(leituraV, 0, 1023, 1, 9);
-           velocidadeFaseA = map(leituraV, 0, 1023, 80, 255);
-           leituraF = analogRead(potF); valorF = map(leituraF, 0, 1023, 1, 9); 
-           leituraA = analogRead(potA); valorA = map(leituraA, 0, 1023, 1, 9);
-           VpotA=map(leituraA, 0, 1023, 0.05, 4);
-           leituraE = analogRead(apotE); valorE = map(leituraE, 0, 1023, 1, 9);                    
-                       
-           if ((valorC != valorguardadoC) )  {valorguardadoC=valorC; valor=valorC; display7(valor);}
-           if ((valorV != valorguardadoV) )  {valorguardadoV=valorV; valor=valorV; display7(valor);}
-           if ((valorF != valorguardadoF) )  {valorguardadoF=valorF; valor=valorF; display7(valor);} 
-           if ((valorA != valorguardadoA) )  {valorguardadoA=valorA; valor=valorA; display7(valor);} 
-         }  
+ //fase B                                                                                                                      
+  while ( contador< valorC)                                                              // enquanto o braço não atingir o fim do percurso prescrito no pot C            
+        { analogWrite(EnableM, valorV2);                                                 // menor velocidade nessa fase.          
+          digitalWrite(M1,0);  digitalWrite(M2,1);                                       // motor gira  no sentido 1               
+          atualizaDisplay();     }                                                       // da uma passadinha p atualizar o display 
+          digitalWrite(M1,1);  digitalWrite(M2,1);                                       // acabado o loop paramos o motor                                                            
+//freadinha  substituir por PID
+         digitalWrite(M1,1);  digitalWrite(M2,0); delay(80);                             // estrategia provisoria de parada imediata do motor, dando um microgiro em sentido contrario                 
+         digitalWrite(M1,1);  digitalWrite(M2,1); delay(40);                             // esperamos em breve implementar um PID                                                                                          
+         t2=millis();     //encerrando contagem de descida
        
+//........................ MOTOR RETORNANDO A POSIÇÃO SUPERIOR - PONTO ZERO
+          t3=millis();                                                                   //iniciando contagem de subida
+          digitalWrite(C1,1);  digitalWrite(C2,0);analogWrite(EnableM, 255);              // cooler inverte e colabora p eliminar parte dos gases tóxicos a partir do y da traqueia
+     while (  contador> limiteUp)                                                        // enquanto a leitura da posição do braço indicar  não chegou ao ponto zero                                                                                   
+        { analogWrite(EnableM, 250);                                                     // habilita o PWM com velocidade do potenciometro V
+          digitalWrite(M1,1);  digitalWrite(M2,0);                                       // giro invertido
+          atualizaDisplay();  }                                                               
+          digitalWrite(M1,1); digitalWrite(M2,1);                                        // desliga motor
+//freadinha substituir por PID
+          digitalWrite(M1,0); digitalWrite(M2,1);  delay(100); 
+          digitalWrite(M1,1); digitalWrite(M2,1);          
+          if (contador!=limiteUp){checando();}                                           // confirma posição
+          t4=millis();                                                                   //encerrando contagem de subida
+ // tempo de espera                                                                      //delay de espera que completa o tempo faltante p fazer valer a relação i/e
+          digitalWrite(C1,0);  digitalWrite(C2,1);analogWrite(EnableM, 255);             // cooler volta a dgirar enviando ar p os pumões ajudando no ppep(manter um mínimo de ar nos pulmões p q ele não colabe.
+                                                                                         // temos que descobrir os pontos de inversão do cooler p maior eficiencia  
+          espera=valorF*(t2-t1) - (t4-t3) ;         
+          float xx=espera/20;                                                     
+          for (int i = 0; i <=20; i++) {delay(xx); atualizaDisplay();}                   // poderiamos ter colocado um delay com o tempo xx, mas preferimos dividi-lo arbitrariamente em 20 pedaços
+          frequencia= ((t2-t1)+(t4-t3))/1000;               }                             // a cada pedaço o procedimento da um pulinho em atualizaDisplay() q atualiza qq mudança ocorrida nos potenciometros.                                                                              
+                                                                                        //Se não fosse feito isso, durante esse espaço de tempo as alteraçoes do usuário não seriam efetivadas e nem visualiadas                                                                       
+void CadeAmbu(){ 
+   while (leituraAmbu==HIGH)                                                             // verifica se há Ambu no lugar certo, e se não estiver pisca um "A"
+       {  lcd.clear();lcd.setCursor(0,0);lcd.print("AMBU AUSENTE");
+          delay(400);lcd.clear();delay(400);
+          leituraAmbu= digitalRead(Ambu);         } }
+
+void checando(){
+          digitalWrite(C1,1);  digitalWrite(C2,1);analogWrite(EnableM, 0);               // cooler reversível desliga// rotina de inicio 
+ while (  contador> limiteUp)                                                            // enquanto a leitura da posição do braço indicar  não chegou ao ponto zero                                                                                   
+       {  analogWrite(EnableM, 70);                                                      // habilita o PWM com velocidade do potenciometro V
+          digitalWrite(M1,1);  digitalWrite(M2,0);                                       // giro invertido
+          atualizaDisplay();                                                                  
+          lcd.clear();lcd.setCursor(0,0);lcd.print("Preparando");lcd.setCursor(0,1);lcd.print("inicialização");}
+          digitalWrite(M1,1); digitalWrite(M2,1); 
+                                                                                         
+          digitalWrite(M1,0); digitalWrite(M2,1);  delay(100);                           //freadinha  substituir por PID
+          digitalWrite(M1,1); digitalWrite(M2,1); 
+          delay(1000);                                }                                  // espera um tempinho p iniciar o trabalho    
+   
+ void atualizaDisplay(){                                                                 // rotina resp. pela atualização da leitura dos 3 potenciometros no display 
+                                                                                                   
+          leituraC = analogRead(potC); valorC = map(leituraC, 0, 1023, 1, 70); 
+          leituraF = analogRead(potF); valorF = map(leituraF, 0, 1023, 1, 4);        
+          leituraV = analogRead(potV); valorV = map(leituraV, 0, 1023, 80,255);  valorV2 = map(valorV, 80, 255, 80,180);       
+             lcd.setCursor(13,1);lcd.print(frequencia);
+             lcd.setCursor(0,0);lcd.print("Vol:");
+             lcd.setCursor(8,0);lcd.print("i/e 1/"); 
+             lcd.setCursor(0,1);lcd.print("Vel:");
+             lcd.setCursor(8,1);lcd.print("Freq");                   
+          if (valorC != guardadoC){guardadoC=valorC; lcd.setCursor(4,0);lcd.print("    ");    lcd.setCursor(4,0);lcd.print(valorC); };
+          if (valorV != guardadoV){guardadoV=valorV; lcd.setCursor(4,1);lcd.print("    ");    lcd.setCursor(4,1);lcd.print(valorV); };
+          if (valorF != guardadoF){guardadoF=valorF; lcd.setCursor(14,0);lcd.print(valorF);                                         };
+   }         
+
+
+
+
+
+
+
+
                
 
      
