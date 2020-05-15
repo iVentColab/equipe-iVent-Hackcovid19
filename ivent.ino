@@ -1,6 +1,5 @@
-
 //modificação 2 - tarde -  15052020 - 1º dia do hackcovid19
-//#include <TimerOne.h>              // desnecessário por enquanto
+
 #include <Wire.h>
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
