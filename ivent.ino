@@ -1,83 +1,8 @@
 
 //15/05/2020  inicio do Hackathon HackCovid19
 
-//******************************************************************************************************************************
-// início do projeto                               - manha 27042020
-// finalização do código                           - noite 29042020  
-// Testes e correções no aparelho                  - noite 30042020
-// Aparelho funcionando                            - noite 01052020
-// Aperfeiçoamento-1                               - noite 03052020  velocidade em 2 fases e sistema de proteção inicial e inclusão de sensor p detectar a ausencia do Ambu no aparelho
-// Envio do cód p programadores envolvidos no proj - tarde 04052020
-// Aperfeiçoamento 2                               - noite 04052020  implentação do pwm, arrays no display e retirada do sensor de Ambu
-// Aperfeiçoamento 3                               - noite 06052020  implementação de mais dois potenciometros, 
-//                                                                   1-substituimos a ideia de um algoritmo de desaceleração pronto e
-//                                                                   e criamos um potenciometro que prescreve a taxa de desaceleração(isso fica a cargo da equipe médica)
-//                                                                   2-potenciomento funcionando como encoder, ou seja todo o controle de posicionamento, que inclusive era feito pelos microsuitches,
-//                                                                   agora é feito pelo encoder. vamos ver se funciona bem. 
-//                                                                   3- alguns pinos foram mudados de endereço
-//
-// Aperfeiçoamento 4                               - manhã 07052020  com a remontagem do novo modelo reorganizamos a tabela do display
-//                                                                   Ajustamos o controle de posicionamento do braço através do Encoder.
-//                                                                   Ajustamos o controle de velocidade pelo pot V
-//                                                                   Fizemos alguns testes com os parametros de desaceleração do pot 4, ainda não tá bom 
-//                                                                   voltamos a trabalhar com a idéia de controle do tempo das ações, tipo: se um movimento que
-//                                                                   deveria se realizar em um segundo não chega ao destino no tempo previsto , alguma ação é tomada.
-//                                                                   Apareceram alguns problemas e retomamos isso amanhã 
-//                                                                   substituimos o HIGH e o LOW da programação por 1 e 0 respectivamente p facilitar a escrita  
-//Hardware                                         - manhã 08052020  Preparação e pigmentação do material plástico líquido
-//                                                                   que deve fazer a cobertura plástica das peças externas de metal.  
-//hardware                                         - manhã 09052020  Finalizada cobertura das duas peças do braço com pl[astico líquido
-//   
-// migração p arduino mega- ja estavamos quase sem portas
-// implementando sensor optico reflexivo p sensoriamento do Ambu - esperando a peça chegar
-// implementação de encoder óptico p controle de posição do braço  
-// modelamos em 3d e imprimimos a peça ( rodela perfurada c adaptação p eixo do motor) do encoder com 72 passos 
-// implementamos o código p cooler reversível como auxiliar na eliminação ou diminuição de gases tóxicos residuais no sistema 
-// e que ainda serve como auxiliar p manutenção do peep no paciente
-// eliminamos o potenciometro q cuidava da velocidade da segunda metade do percurso (mais lenta) e implementamos no lugar uma função (map) da velocidade da faseA
-// sustituimos o display de 7 segmentos por um display lcd 16x2 (16 colunas e duas linhas)
-// Elaboramos um design onde as informações aparecem completas no display e imediatamente ajustáveis conforme forem editadas
-// foi implementado um código que mantém uma proporção exata do tempo da relação insp/exp programada pela equipe médica- grande avanço
-// foi implementado um código que calcula, baseado nos valores de curso, velocidade e i/e a frequencia ou tempo do ciclo comleto e expõe no displaylcd (unid em segs)
-// houve o entendimento da necessidade de implementação de um PID em dois lugares e isso já está sinalizado e estamos trabalhando nisso agora.  
-// ATÉ 13/05/2020
-// falta atualizar novas modificações    até 15/05/2020                                             
-//******************************************************************************************************************************
-
-// informações importantes p facilitar o entendimento:
-
-//trata-se de um programa que pretende fazer um motor (e um braço acoplado a ele)  ter um comportamento de acordo com o desejado
-//as ordens p o funcionamento do motor são:
-
-// digitalWrite(M1,0); digitalWrite(M2,1); -para o motor girar no sentido de descida do braço
-// digitalWrite(M1,1);  digitalWrite(M2,0); -para o motor girar no sentido de subida do braço
-// digitalWrite(M1,1); digitalWrite(M2,1); - para o motor parar de girar 
-// Esse braço mecânico comprime o Ambu que é um equipamento hospitalar que quando apertado expulsa o seu volume de ar para o paciente através de uma traqueia de plástico
-// e uma mascara presa sobre a boca e o nariz do paciente.  
-// Nesse conjunto, há válvulas que fazem, entre outras coisas, o trabalho de encaminhar o ar "usado" do paciente para fora do sistema.
-
-// observação:é importante saber que a função do aparelho é "injetar" uma mistura gasosa hospitalar (ar enriquecido com O2) no paciente - inspiração. 
-// A expiração do paciente é totalmente independente do aparelho, ou seja, o retorno do braço mecânico à posição superior não tem influência nenhuma
-// sobre o paciente.
-// No caso de não haver uma linha de oxigênio perto do paciente, ainda assim o aparelho tem utilidade pois ventila o pulmão do doente, não com tanta eficácia.
-
-// outra coisa imortante
-// temos agora 3 POTENCIÔMETROS,   que são responsáveis pelo " ajuste ou programação" do comportamento do equipamento que é FEITA PELA EQUIPE MÉDICA
-// no hospital ou CTI
-// o equipamento tem que dar conta de pacientes extremamente diferentes ou seja permitir ao médico ou fisioterapeuta encontrar nesses 4 parametros (potenciômetros) 
-// a combinação ideal p cada paciente.
-
-//Potenciometro.
-// o pino central envia um valor analógico que é lido na porta do arduino como um numero que vai de 0 a 1023. 
-//  Parâmetros:
-// 1º - quantidade ou volume de ar injetada no paciente
-// 2º - velocidade da fase A do giro do motor , a velocidade da fase b do percurso é ditada por uma outra função (map) da velocidade da fase A
-// 3º - a relação entre tempo de inspiração e expiração - 
-// próximos desafios devem aparecer quando o aparelho entrar em testes e quando a ANVISA fizer novas exigências
-//  idéias boas são sempre bem vindas! Abraço!! 
- 
-//;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-//#include <TimerOne.h>
+modificação 1
+//#include <TimerOne.h>              // desnecessário por enquanto
 #include <Wire.h>
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
@@ -199,12 +124,13 @@ void loop(){
           } }    
        
 //.........................................INSPIRAÇÃO DO PACIENTE - em 2 fases A e B  
- //faseA  
-          t1 = millis();                                                                 // iniciando contagem de descida                                                           
+ 
+                                                                                            
           digitalWrite(C1,0);  digitalWrite(C2,1);analogWrite(EnableM, 255);             // em discussão-- soprador em força máxima(255)criando uma barreira de resistência à fuga da pressão enviada pelo Ambu - 
-                                                                                             
-          contador=limiteUp;                                                             // coloca em contador um valor inicial de segurança
 
+ //faseA                                                                                              
+          contador=limiteUp;                                                             // coloca em contador um valor inicial de segurança
+          t1 = millis();                                                                 // iniciando contagem de descida 
    while  contador< valorC/2)                     
           {direcao=1; // descendo                // configura motor                      // avisa ao encder a direçao atual p incrementação ou decrementação do contador
           analogWrite(EnableM, valorV);           // configura motor                     // habilita motor com pwm no valor de velocidade escolhido no potV
@@ -215,19 +141,27 @@ void loop(){
 //        e não precisariam ser repetidas na fase B já que são as mesmas, correto? num sei pq deu ruim quando eu fiz isso                                                                                                                                                    
  //fase B 
           analogWrite(EnableM, valorV2);                                                 //configura velocidade menor nessa fase.                                                                 
-    while (contador< valorC)                                                             // enquanto o braço não atingir o fim do percurso prescrito no pot C            
+                                                                      
+   while  (contador< valorC/1.05) // aqui não deveria ser  0.95?                         // enquanto o braço não atingir , aproximadamente, 95% do percurso prescrito no pot C            
           {direcao=1; 
           analogWrite(EnableM, valorV2);           // configura motor                    
           digitalWrite(M1,0);  digitalWrite(M2,1);                                       // motor gira no sentido 1 enquanto o braço não atingir metade do curso escolhido 
           atualiza(); }                                                            
           digitalWrite(M1,1);  digitalWrite(M2,1);                                       // acabado o loop paramos o motor                                                            
 
-//freadinha  substituir por PID ou PD
-          direcao=2;   //subindo                                                         // avisa ao encoder a direçao atual p incrementação ou decrementação do contador
-          digitalWrite(M1,1);  digitalWrite(M2,0); delay(80);                            // estrategia provisoria de parada imediata do motor, dando um microgiro em sentido contrario                                                                                            
-          digitalWrite(M1,1);  digitalWrite(M2,1); delay(40);                            // esperamos em breve implementar um PID                                                                                          
+//freadinha  Subtituindo por um  PID ou PD
+
+          k = 1 ;                      // K é o coeficiente de amortecimento, K grande = rápido desaceleração
+          W = valorC;                  // W normaliza espaço temporal
+    while (contador< valorC)                                                             // depois de 95% do percurso aplica-se um comtrole derivativo da velocidade           
+          {analogWrite(EnableM, valorV2 * exp((-valorC + W) * K));                       // velocidade é reduzida exponencialmente           
+          direcao=2;   //subindo                               //poderia estar fora do loop   avisa ao encoder a direçao atual p incrementação ou decrementação do contador
+          digitalWrite(M1,0); digitalWrite(M2,1);}  //poderia estar fora do loop                                                                                                                
+          
+          digitalWrite(M1,1); digitalWrite(M2,1); delay(40);                                                                                                                    
           t2=millis();     //encerrando contagem de descida
-       
+                         
+         
 //........................ MOTOR RETORNANDO A POSIÇÃO SUPERIOR - PONTO ZERO
           t3=millis();                                                                   //iniciando contagem de subida
  
@@ -236,7 +170,7 @@ void loop(){
     while (contador> limiteUp)                                                            // enquanto a leitura da posição do braço indicar  não chegou ao ponto zero                                                                                   
           {direcao=2;     // subindo              // configura motor
           analogWrite(EnableM, valorV);            // configura motor                                             
-          digitalWrite(M1,1);  digitalWrite(M2,0); // configura motor                     // giro invertido   
+          digitalWrite(M1,1);  digitalWrite(M2,0); // configura motor                      
           atualiza();}                                                               
           digitalWrite(M1,1); digitalWrite(M2,1);                                         // ao fim do loop desliga motor
 //freadinha substituir por PID ou PD
@@ -304,7 +238,7 @@ void atualiza(){                                                                
 // interrupções
  void interrompendo1()                    // encoder pino2  // função de interrupção1         
           {
-       if (direcao==1){contador ++;  } 
+       if (direcao==1){contador ++;} 
        if (direcao==2){contador--;}
           sinalizador=1;}                       
 
@@ -314,7 +248,10 @@ void interrompendo2()                   //botao pino3      // função de interr
 
  
 /*/
-
+ * digitalWrite(13, digitalRead(13) ^ 1); iverte
+ * Parâmetros
+interrupção: o número da interrupção (int)
+pino: o número do pino do Arduino
 ISR: a ISR a ser chamada quando a interrupção ocorre; essa função deve não tomar nenhum parâmetro nem retornar nada. Essa função é chamada de rotina de serviço da interrupção ou ISR (do Inglês, interrupt service routine).
 modo: define quando a interrupção deve ser ativada. Quatro constantes estão predefinidas como valores válidos:
 LOW acionar a interrupção quando o estado do pino for LOW,
@@ -323,6 +260,10 @@ RISING acionar a interrupção quando o estado do pino for de LOW para HIGH apen
 FALLING acionar a interrupção quando o estado do pino for de HIGH para LOW apenas.
 Placas Due, Zero e MKR1000 suportam também:
 HIGH acionar a interrupção quando o estado do pino for HIGH.
+ 
+ 
+ 
+ 
  
 /*
 // Timer1.initialize(500000); // Inicializa o Timer1 e configura para um período de 0,5 segundos
@@ -335,3 +276,9 @@ HIGH acionar a interrupção quando o estado do pino for HIGH.
   myPID.SetTunings(Kp, Ki, Kd);                   //Adjust PID values
 // ......................    
 */
+
+
+
+               
+
+     
