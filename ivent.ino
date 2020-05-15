@@ -1,7 +1,5 @@
 
-//15/05/2020  inicio do Hackathon HackCovid19
-
-modificação 1
+//modificação 2 - tarde -  15052020 - 1º dia do hackcovid19
 //#include <TimerOne.h>              // desnecessário por enquanto
 #include <Wire.h>
 #include <LCD.h>
@@ -20,17 +18,17 @@ const int
     C2=9,             // out  -     "        "                  ""
     EnableC=10,       // out  enable do soprador reversivel     ""
     ledEdit=13,       // led sinalizador do modo de edição dos parametros
-    EnableAmbu 40;    // enable do sensor do Ambu   
-    //36 usado como positivo p sensor do Ambu
-    //38 usado como ground p sensor do ambu 
+    //32 usado como positivo p sensor do Ambu
+    //34 usado como ground p sensor do ambu  
+    EnableAmbu = 36,  // out enable do sensor do Ambu   
+    Ambu = 38,        // in - sensor óptico reflexivo (infravermelho) analógico - informa ao sistema se há um ambu no aparelho ou se está fora de posição                              
     // portas 20 e 21  SDA e SCL da placa I2C
     
 // pinos analógicos
     potV = A0,        // potenciometro responsável pela definição da velocidade do movimento do braço  - Knob AZUL
     potF = A2,        //    "              "        "      "      da relação chamada - insp/exp ou I/E - Knob VERDE
     potC = A1,        //    "              "        "      "      do curso do braço (VOLUME de ar injetada no paciente)  - Knob AMARELO                     
-    Ambu = A14,       // in - sensor óptico reflexivo (infravermelho) analógico - informa ao sistema se há um ambu no aparelho ou se está fora de posição                              
-    // Peep = A15;       - peep eletronico  não implementado
+    Peep = A15;       // peep eletronico  não implementado
     // sensor de fluxo   - não implementado
     // sensor de pressão - não implementado
 
@@ -49,24 +47,28 @@ int leituraAmbu,                                  // variável q sinaliza se há
     nCiclos=0,                                    // contagem de ciclos p fechamento da janela de configuração do equip - estratégia de prevençao p manipuaçao acidental dos parametros nos pots
     direcao=0,                                    // a indicação da direção do motor informa se o contador vai ser incrementado ou decrementado na interrupção 1
     sinalizador=0, 
-    // Vpeep,                                     // valor analogico lido no potenciometro relativo ao peep eletronico - ainda não implemntado
+    //Vpeep,                                     // valor analogico lido no potenciometro relativo ao peep eletronico - ainda não implemntado
     S1=0;                                         //setada durante a interrupção causada pelo no botao1 e retorna a 0 através tb do botao1 ou depois de alguns ciclos de operação(Ciclos)
 
+float     
+    K, W;                                         // PD
 unsigned long 
     t1 = 0, t2 = 0, t3 = 0, t4 = 0,ti=0, tf=0;    //  variáveis associadas ao millis()   
 
 void setup(){
   Serial.begin(9600);
-  
-  //interrupções
+ //botao -interrupção
+  pinMode(botao1, INPUT_PULLUP);                 // pino3  - botão p modo de edição dos parametros  
+  pinMode(encoder,INPUT);                        // pino2  - entrada do sinal do disco acoplado ao motor
+ //interrupções
   attachInterrupt(digitalPinToInterrupt(encoder), interrompendo1, RISING);           // CONFIGURAÇÃO DA INTERRUPÇÃO NO PINO 2
   attachInterrupt(digitalPinToInterrupt(botao1), interrompendo2, RISING);            // CONFIGURAÇÃO DA INTERRUPÇÃO NO PINO 3
 
-  //ambu
+  //ambu  
   pinMode(Ambu,INPUT);                           // A14- PORTA ANALOGICA PINO QUE MONITORA A PRESENÇA DO AMBU NO EQUIP
   pinMode(EnableAmbu,OUTPUT);                    // pino 40 - porta digital - HABILITA SENSOR DO AMBU
-  pinMode(36,OUTPUT); digitalWrite(36,1);        // VAI SER USADO COMO POSITIVO P SENSOR DO AMBU
-  pinMode(38,OUTPUT); digitalWrite(38,0);        // VAI SER USADO COMO GROUND P SENSOR DO AMBU
+  pinMode(32,OUTPUT); digitalWrite(36,1);        // VAI SER USADO COMO POSITIVO P SENSOR DO AMBU
+  pinMode(34,OUTPUT); digitalWrite(38,0);        // VAI SER USADO COMO GROUND P SENSOR DO AMBU
 
   //display lcd 16x2
   lcd.begin (16,2);                              //SETA A QUANTIDADE DE COLUNAS(16) E O NÚMERO DE LINHAS(2) DO DISPLAY
@@ -83,9 +85,6 @@ void setup(){
   //pinos do soprador
   pinMode(C1, OUTPUT); pinMode(C2, OUTPUT);  
   pinMode(EnableC, OUTPUT);                      // o pino enable habilita o funcionamento do motor. Pino pwm usado p controlar a velocidade do motor                                
-
-  //botao -interrupção
-  pinMode(botao1, INPUT_PULLUP);                 // pino3  - botão p modo de edição dos parametros
  
  // pinos dos 3 potenciometros
   pinMode(potC, INPUT);pinMode(potF, INPUT);pinMode(potV, INPUT); 
@@ -107,9 +106,8 @@ void loop(){
           checando();                                           // checagem de posição do braço    
           marca=1;
           }                                                                                     
-       
-          leituraAmbu= digitalRead(Ambu);                     // verifica a cada loop se o Ambu está no lugar certo
-       if (leituraAmbu==LOW){CadeAmbu();}                     // se o Ambu não está, chama a rotina CadeAmbu()- (ta invertido aqui enquanto naõ resolvemos o HARDWARE)
+          
+          AloAmbu();                                       // função q monitora o posicionamento correto do Ambu no aparelho
       
           atualiza();                                         // se a janela de edição estiver aberta atualiza os parametros
        
@@ -131,14 +129,16 @@ void loop(){
  //faseA                                                                                              
           contador=limiteUp;                                                             // coloca em contador um valor inicial de segurança
           t1 = millis();                                                                 // iniciando contagem de descida 
-   while  contador< valorC/2)                     
+   while  (contador< valorC/2)                     
           {direcao=1; // descendo                // configura motor                      // avisa ao encder a direçao atual p incrementação ou decrementação do contador
           analogWrite(EnableM, valorV);           // configura motor                     // habilita motor com pwm no valor de velocidade escolhido no potV
           digitalWrite(M1,0);  digitalWrite(M2,1);// configura motor                     // motor gira no sentido 1 enquanto o braço não atingir metade do curso escolhido
           atualiza(); }  
 
-// obs :  a configuração do motor linhas 214,215,216 poderiam ficar fora(antes) do loop
-//        e não precisariam ser repetidas na fase B já que são as mesmas, correto? num sei pq deu ruim quando eu fiz isso                                                                                                                                                    
+// obs :  a configuração do motor linhas 132,133,134 poderiam ficar fora(antes) do loop
+//        e não precisariam ser repetidas na fase B já que são as mesmas, correto? num sei pq deu ruim quando eu fiz isso 
+//        mesma situação nas linhas 144,145,146   - 157 e 158  - e 170,171,172
+                                                                                                                                                  
  //fase B 
           analogWrite(EnableM, valorV2);                                                 //configura velocidade menor nessa fase.                                                                 
                                                                       
@@ -151,7 +151,7 @@ void loop(){
 
 //freadinha  Subtituindo por um  PID ou PD
 
-          k = 1 ;                      // K é o coeficiente de amortecimento, K grande = rápido desaceleração
+          K = 1 ;                      // K é o coeficiente de amortecimento, K grande = rápido desaceleração
           W = valorC;                  // W normaliza espaço temporal
     while (contador< valorC)                                                             // depois de 95% do percurso aplica-se um comtrole derivativo da velocidade           
           {analogWrite(EnableM, valorV2 * exp((-valorC + W) * K));                       // velocidade é reduzida exponencialmente           
@@ -165,7 +165,7 @@ void loop(){
 //........................ MOTOR RETORNANDO A POSIÇÃO SUPERIOR - PONTO ZERO
           t3=millis();                                                                   //iniciando contagem de subida
  
-          digitalWrite(C1,0);  digitalWrite(C2,1);analogWrite(EnableM, peep);             // soprador diminue a intensidade do fluxo - passa a atuar como mantenedor do ppep(pressão mínima de ar nos pulmões para q ele não colabe.
+          digitalWrite(C1,0);  digitalWrite(C2,1);analogWrite(EnableM, Peep);             // soprador diminue a intensidade do fluxo - passa a atuar como mantenedor do ppep(pressão mínima de ar nos pulmões para q ele não colabe.
           
     while (contador> limiteUp)                                                            // enquanto a leitura da posição do braço indicar  não chegou ao ponto zero                                                                                   
           {direcao=2;     // subindo              // configura motor
@@ -189,8 +189,11 @@ void loop(){
           delay(xx); {atualiza();}}                                                       // aqui poderiamos ter colocado um delay com o tempo xx, mas preferimos dividi-lo arbitrariamente em 20 pedaços      
           frequencia= ((t2-t1)+(t4-t3))/1000;                                             // a cada pedaço o procedimento da um pulinho em atualiza() e se a janela de edição estiver aberta atualiza os parametros e o display                                                                              
 }                                                                                         //Se não fosse feito isso, durante esse espaço de tempo as alteraçoes do usuário não seriam efetivadas e nem visualiadas                                                                       
-void CadeAmbu(){  
-    while (leituraAmbu==HIGH)    // acho que teremos que mudar p uma leitura analogica    // verifica se há Ambu no lugar certo, e se não estiver pisca um "A"
+void AloAmbu(){  
+          digitalWrite(EnableAmbu,1);
+          int leituraAmbu = digitalRead(Ambu);
+  // if   (leituraAmbu!=1) { 
+    while (leituraAmbu!=0)    // acho que teremos que mudar p uma leitura analogica    // verifica se há Ambu no lugar certo, e se não estiver pisca um "A"
                                 // porque acho o sensor não é digital, ainda não vi isso
           {lcd.clear();lcd.setCursor(0,0);lcd.print("AMBU AUSENTE");
           delay(400);lcd.clear();delay(400);
@@ -235,47 +238,18 @@ void atualiza(){                                                                
        if (valorF != guardadoF){guardadoF=valorF; lcd.setCursor(14,0);lcd.print(valorF);                                         };
           }
    }
+   
 // interrupções
  void interrompendo1()                    // encoder pino2  // função de interrupção1         
           {
        if (direcao==1){contador ++;} 
        if (direcao==2){contador--;}
-          sinalizador=1;}                       
+          sinalizador=1;                  }                       
 
 void interrompendo2()                   //botao pino3      // função de interrupção2
           {
-       if (S1==0){digitalWrite(ledEdit,HIGH);nCiclos=0; S1=1;} else {S1=0;digitalWrite(ledEdit,LOW);}}  
+       if (S1==0){digitalWrite(ledEdit,HIGH);nCiclos=0; S1=1;} else {S1=0;digitalWrite(ledEdit,LOW);}  }  
 
- 
-/*/
- * digitalWrite(13, digitalRead(13) ^ 1); iverte
- * Parâmetros
-interrupção: o número da interrupção (int)
-pino: o número do pino do Arduino
-ISR: a ISR a ser chamada quando a interrupção ocorre; essa função deve não tomar nenhum parâmetro nem retornar nada. Essa função é chamada de rotina de serviço da interrupção ou ISR (do Inglês, interrupt service routine).
-modo: define quando a interrupção deve ser ativada. Quatro constantes estão predefinidas como valores válidos:
-LOW acionar a interrupção quando o estado do pino for LOW,
-CHANGE acionar a interrupção quando o sempre estado do pino mudar
-RISING acionar a interrupção quando o estado do pino for de LOW para HIGH apenas,
-FALLING acionar a interrupção quando o estado do pino for de HIGH para LOW apenas.
-Placas Due, Zero e MKR1000 suportam também:
-HIGH acionar a interrupção quando o estado do pino for HIGH.
- 
- 
- 
- 
- 
-/*
-// Timer1.initialize(500000); // Inicializa o Timer1 e configura para um período de 0,5 segundos
- // Timer1.attachInterrupt(uhu); // Configura a função uhu() como a função para ser chamada a cada interrupção do Timer1
-  //Timer1.detachInterrupt(uhu); 
-
-// PID......................    
-  Setpoint = ;                                  //Hardcode the brigdness value
-  myPID.SetMode(AUTOMATIC);                       //Turn the PID on
-  myPID.SetTunings(Kp, Ki, Kd);                   //Adjust PID values
-// ......................    
-*/
 
 
 
