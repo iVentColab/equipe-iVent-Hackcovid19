@@ -30,6 +30,7 @@ void loop(){
         digitalWrite(pinoLed, 0); 
         control = 0;    
      }
+}
         
  
  void interrompendo1() 
