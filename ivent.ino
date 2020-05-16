@@ -49,7 +49,7 @@ void setup(){
 }
 void loop(){                          
               //vamos procurar uma "medida" de tempo p servir de parametro p comparação
-if (pp==0){
+if (pp==0){                 // essa condição é só pra não passar mais nesse loop depois que ele informar a amostra de tempo q precisamos
  while (prov<20)                                                                             // 20 é um valor aleatorio so p botar o motor p girar
        {     
                 lcd.setCursor(0,0);lcd.print("medindo");       
