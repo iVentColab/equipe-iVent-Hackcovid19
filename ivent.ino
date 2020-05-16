@@ -1,40 +1,51 @@
 
-int pinoLed = 13; //PINO DIGITAL UTILIZADO PELO LED  
-int pinoSensor = 2; //PINO DIGITAL UTILIZADO PELO SENSOR
-int contador;
-int control = 0;
-void setup(){ 
-  pinMode(4,OUTPUT);digitalWrite(4, 1);
-  pinMode(3,OUTPUT);digitalWrite(3, 0);
-  pinMode(pinoSensor, INPUT); //DEFINE O PINO COMO ENTRADA
-  pinMode(pinoLed, OUTPUT); //DEFINE O PINO COMO SAÍDA   
-  digitalWrite(pinoLed, LOW); //LED INICIA DESLIGADO
-  Serial.begin(9600);
-  attachInterrupt(digitalPinToInterrupt(2), interrompendo1, RISING);           // CONFIGURAÇÃO DA INTERRUPÇÃO NO PINO 2
+void checando(){
 
-}  
-   
-void loop(){
-     if (digitalRead(pinoSensor) == 0)
-     { 
-         digitalWrite(pinoLed, 1); 
-        if (control == 0)
-        {
-          contador ++;
-          Serial.println(contador);
-        }
-        control = 1;
-     }
-     else
-     { 
-        digitalWrite(pinoLed, 0); 
-        control = 0;    
-     }
-}
-        
- 
- void interrompendo1() 
- {
- }
- 
+
+
+          lcd.clear();lcd.setCursor(0,0);lcd.print(" REPOSICIONANDO ");                          
+
+          lcd.setCursor(1,1);lcd.print("BRA");
+
+          lcd.createChar(0, cedilha);
+
+          lcd.setCursor(4,1);
+
+          lcd.write(byte(0));
+
+          lcd.print("O"); 
+
+          lcd.setCursor(7,1);lcd.print("MECANICO");
+
+
+
+      
+
+          analogWrite(EnableM, 70);                   // configura motor                  // habilita o PWM com velocidade do potenciometro V
+
+          digitalWrite(M1,1);  digitalWrite(M2,0);    // configura motor 
+
+          direcao=1;     // subindo                   // configura motor
+
+          contadore=0;
+
+    while (contador<20) 
+
+          {contadore++;  delay(1);//ajudae();                                                                                                                                                   
+
+       if (sinalizador==1){ contadore=0;sinalizador=0;} }                                                                                           
+
+       
+
+          digitalWrite(M1,1); digitalWrite(M2,1);         // desliga
+
+                                                                                         
+
+          digitalWrite(M1,0); digitalWrite(M2,1);  delay(100);                            //freadinha  substituir por PID
+
+          digitalWrite(M1,1); digitalWrite(M2,1); 
+
+          delay(1000);
+
+          lcd.clear();   
   
