@@ -14,14 +14,17 @@ void setup(){
 }  
    
 void loop(){
+     control = 0
      if (digitalRead(pinoSensor) == 0){ 
          digitalWrite(pinoLed, 1); 
-        {contador ++;
+        if (control == 0){
+         contador ++;
          Serial.println(contador);}
          }
-   else{ digitalWrite(pinoLed, 0);     }}
+        control = 1
+   else{ digitalWrite(pinoLed, 0); control = 0    }}
         
  
- void interrompendo1()      
+ void interrompendo1() 
  
   
