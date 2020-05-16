@@ -219,30 +219,37 @@ void Configureme(){
           
 void checando(){
 
-          lcd.clear();lcd.setCursor(0,0);lcd.print(" REPOSICIONANDO ");                          
-          lcd.setCursor(1,1);lcd.print("BRA");
-          lcd.createChar(0, cedilha);
-          lcd.setCursor(4,1);
-          lcd.write(byte(0));
-          lcd.print("O"); 
-          lcd.setCursor(7,1);lcd.print("MECANICO");
+    lcd.clear();lcd.setCursor(0,0);lcd.print(" REPOSICIONANDO ");                          
+    lcd.setCursor(1,1);lcd.print("BRA");
+    lcd.createChar(0, cedilha);
+    lcd.setCursor(4,1);
+    lcd.write(byte(0));
+    lcd.print("O"); 
+    lcd.setCursor(7,1);lcd.print("MECANICO");
 
       
-          analogWrite(EnableM, 70);                   // configura motor                  // habilita o PWM com velocidade do potenciometro V
-          digitalWrite(M1,1);  digitalWrite(M2,0);    // configura motor 
-          direcao=1;     // subindo                   // configura motor
-          contadore=0;
-    while (contador<20) 
-          {contadore++;  delay(1);//ajudae();                                                                                                                                                   
-       if (sinalizador==1){ contadore=0;sinalizador=0;} }                                                                                           
+    analogWrite(EnableM, 70);                   // configura motor                  // habilita o PWM com velocidade do potenciometro V
+    digitalWrite(M1,1);  digitalWrite(M2,0);    // configura motor 
+    direcao=1;     // subindo                   // configura motor
+    contadore=0;
+    
+    while (contadore<20) {
+        contadore++;  
+        delay(1);//ajudae();                                                                                                                                                   
+        if (sinalizador==1) {
+            contadore=0;
+            sinalizador=0;
+        }
+     }                                                                                           
        
-          digitalWrite(M1,1); digitalWrite(M2,1);         // desliga
-                                                                                         
-          digitalWrite(M1,0); digitalWrite(M2,1);  delay(100);                            //freadinha  substituir por PID
-          digitalWrite(M1,1); digitalWrite(M2,1); 
-          delay(1000);
-          lcd.clear();                                    }                                   // espera um tempinho p iniciar o trabalho    
-                                                                 
+    digitalWrite(M1,1); digitalWrite(M2,1);         // desliga                                                                                        
+    digitalWrite(M1,0); digitalWrite(M2,1);  delay(100);                            //freadinha  substituir por PID
+    digitalWrite(M1,1); digitalWrite(M2,1); 
+    delay(1000);
+    lcd.clear();                                                                       // espera um tempinho p iniciar o trabalho    
+
+}   
+
 void atualiza(){                                                                          // ATUALIZA OS PARAMETROS 
        if (cracha==1){goto pulo;}
        if (S1==1 && marca!=0) {goto pulo;}
