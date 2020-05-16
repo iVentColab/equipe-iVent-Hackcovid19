@@ -49,7 +49,7 @@ void setup(){
 }
 void loop(){                          
               //vamos procurar uma "medida" de tempo p servir de parametro p comparação
-if (pp==0){                 // essa condição é só pra não passar mais nesse loop depois que ele informar a amostra de tempo q precisamos
+if (pp==0){
  while (prov<20)                                                                             // 20 é um valor aleatorio so p botar o motor p girar
        {     
                 lcd.setCursor(0,0);lcd.print("medindo");       
@@ -88,4 +88,15 @@ fim:
 while(prov==0){
 lcd.setCursor(15,0);lcd.print("X"); delay(300);
 lcd.setCursor(15,0);lcd.print("O"); delay(300);}
-    
+        
+
+           
+}           
+}
+}   
+              
+ void interrompendo1()                    // encoder pino2  // função de interrupção1         
+          {   sinalizador=1;
+       if (direcao==1){contador ++;} 
+       if (direcao==2){contador--;}}               
+
