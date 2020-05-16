@@ -2,7 +2,7 @@
 int pinoLed = 13; //PINO DIGITAL UTILIZADO PELO LED  
 int pinoSensor = 2; //PINO DIGITAL UTILIZADO PELO SENSOR
 int contador;
-int control;
+int control = 0;
 void setup(){ 
   pinMode(4,OUTPUT);digitalWrite(4, 1);
   pinMode(3,OUTPUT);digitalWrite(3, 0);
@@ -15,7 +15,6 @@ void setup(){
 }  
    
 void loop(){
-     control = 0;
      if (digitalRead(pinoSensor) == 0)
      { 
          digitalWrite(pinoLed, 1); 
